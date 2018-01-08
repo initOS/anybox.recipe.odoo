@@ -2,7 +2,7 @@ import os
 import sys
 from setuptools import setup, find_packages
 
-version = '1.9.2'
+version = '1.9.3'
 
 if sys.version_info < (2, 6):
     sys.stderr.write("This package requires Python 2.6 or newer. "
@@ -37,7 +37,7 @@ setup(
     install_requires=requires,
     tests_require=requires + tests_require,
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Framework :: Buildout :: Recipe',
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',

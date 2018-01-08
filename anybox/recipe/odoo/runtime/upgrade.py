@@ -69,7 +69,7 @@ def upgrade(upgrade_script, upgrade_callable, conf, buildout_dir):
 
     arguments = parser.parse_args()  # 'args' would shadow the one of pdb
     log_path = os.path.abspath(os.path.expanduser(arguments.log_file))
-    log_level = arguments.log_level
+    log_level = arguments.log_level.upper()
     console_level = arguments.console_log_level.upper()
     quiet = arguments.quiet
 
@@ -81,7 +81,11 @@ def upgrade(upgrade_script, upgrade_callable, conf, buildout_dir):
 
     session = Session(conf, buildout_dir)
 
-    from openerp.tools import config
+    try:
+        from odoo.tools import config
+    except ImportError:
+        from openerp.tools import config
+
     config['logfile'] = log_path
     config['log-level'] = log_level
 
@@ -89,14 +93,22 @@ def upgrade(upgrade_script, upgrade_callable, conf, buildout_dir):
     if not quiet:
         print("Starting upgrade, logging details to %s at level %s, "
               "and major steps to console at level %s" % (
-                  log_path, log_level.upper(), console_level.upper()))
+                  log_path, log_level, console_level))
         print('')
 
-    logger = logging.getLogger('openerp.upgrade')
+    logger = logging.getLogger('odoo.upgrade')
     console_handler = logging.StreamHandler()
+
     console_handler.setLevel(getattr(logging, console_level))
     console_handler.setFormatter(logging.Formatter(
         "%(asctime)s %(levelname)s  %(message)s"))
+
+    log_file_handler = logging.FileHandler(log_path, 'a')
+    log_file_handler.setLevel(getattr(logging, log_level))
+    log_file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s  %(message)s"))
+
+    logger.addHandler(log_file_handler)
 
     if not arguments.quiet:
         logger.addHandler(console_handler)
@@ -134,7 +146,7 @@ def upgrade(upgrade_script, upgrade_callable, conf, buildout_dir):
     else:
         logger.info("Database latest upgrade version : %s", db_version)
 
-    upgrade_module = imp.load_source('anybox.recipe.odoo.upgrade_openerp',
+    upgrade_module = imp.load_source('anybox.recipe.odoo.upgrade_odoo',
                                      upgrade_script)
     statuscode = getattr(upgrade_module, upgrade_callable)(session, logger)
     if statuscode is None or statuscode == 0:

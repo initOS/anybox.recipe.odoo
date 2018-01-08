@@ -3,10 +3,10 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='pychart',
-    version='0.123',  # unlikely to exist ever
-    description='Fake Pychart',
-    long_description='Fake Pychart',
+    name='FictiveDist',
+    version='0.123',
+    description='Fictive Python dist',
+    long_description='Fictive Python distribution for testing',
     author='',
     author_email='',
     zip_safe=False,

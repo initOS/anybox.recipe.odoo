@@ -183,8 +183,8 @@ class GitRepo(BaseRepo):
             os.chdir(self.target_dir)
             for line in self.log_call(['git', 'remote', '-v'],
                                       callwith=check_output).splitlines():
-                if (line.endswith('(fetch)')
-                        and line.startswith(BUILDOUT_ORIGIN)):
+                if (line.endswith('(fetch)') and
+                        line.startswith(BUILDOUT_ORIGIN)):
                     return line[len(BUILDOUT_ORIGIN):-7].strip()
 
     def offline_update(self, revision):
@@ -228,18 +228,23 @@ class GitRepo(BaseRepo):
 
         return objtype == 'commit'
 
-    def fetch_remote_sha(self, sha):
+    def fetch_remote_sha(self, sha, checkout=True):
         """Fetch a precise SHA from remote if necessary.
 
         SHA pinning is suboptimal, can't be guaranteed to work (see the
         warnings emitted in code for explanations). Still, many users
         people depend on it, for not having enough privileges to add tags.
         """
-        logger.warn("%s: pointing to a remote commit directly by its SHA "
-                    "is unsafe because it can become unreachable "
-                    "due to history rewrites (squash, rebase) in the remote "
-                    "branch. "
-                    "Please consider using tags if you can.", self.target_dir)
+        if self.options.get('git-warn-sha-pins') not in ['False', 'false']:
+            logger.warn("%s: pointing to a remote commit directly by its SHA "
+                        "is unsafe because it can become unreachable "
+                        "due to history rewrites (squash, rebase) in the "
+                        "remote branch. \n"
+                        "Please consider using tags if you can.\n"
+                        "To get rid of this message, add \n"
+                        "git-warn-sha-pins = False\n"
+                        "to your buildout configuration",
+                        self.target_dir)
         branch = self.options.get('branch')
         if not self.has_commit(sha):
             fetch_cmd = ['git', 'fetch', BUILDOUT_ORIGIN]
@@ -254,7 +259,23 @@ class GitRepo(BaseRepo):
                 fetch_cmd.append(branch)
             self.log_call(fetch_cmd, callwith=update_check_call)
 
-        self.log_call(['git', 'checkout', sha])
+        if checkout:
+            self.log_call(['git', 'checkout', sha])
+
+    def get_local_hash_for_ref(self, ref):
+        """Query the local git database for sha of a given ref.
+
+        :return: ``sha`` the hash of a given ref if known to the local git repo
+                ``None`` if the ref is unkown
+        """
+        if self.has_commit(ref):
+            ref_hash = check_output(
+                ['git', 'show', '--pretty=format:%H', '-s', ref],
+                cwd=self.target_dir,
+                stderr=subprocess.PIPE
+            ).strip()
+            return ref_hash
+        return None
 
     def query_remote_ref(self, remote, ref):
         """Query remote repo about given ref.
@@ -264,6 +285,10 @@ class GitRepo(BaseRepo):
                  ``(None, ref)`` if ref does not exist in remote. This happens
                  notably if ref if a commit sha (they can't be queried)
         """
+        if self.get_local_hash_for_ref(ref) == ref:
+            # shortcut for commit hashes: if ref is a commit hash and git
+            # already knows it as a commit, we can skip the remote querying
+            return (None, ref)
         out = self.log_call(['git', 'ls-remote', remote, ref],
                             cwd=self.target_dir,
                             callwith=check_output).strip()
@@ -393,6 +418,9 @@ class GitRepo(BaseRepo):
                                    "or non git local directory %s" %
                                    self.target_dir)
             os.chdir(self.target_dir)
+            rtype, sha = self.query_remote_ref(BUILDOUT_ORIGIN, revision)
+            if rtype is None and ishex(revision):
+                self.fetch_remote_sha(revision, checkout=False)
             cmd = ['git', 'pull', self.url, revision]
             if self.git_version >= (1, 7, 10):
                 # --edit and --no-edit appear with Git 1.7.10
