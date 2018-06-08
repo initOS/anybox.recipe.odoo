@@ -2,9 +2,10 @@ import os
 import logging
 import subprocess
 import warnings
-from ConfigParser import ConfigParser
-from ConfigParser import NoOptionError
-from ConfigParser import NoSectionError
+try:
+    from configparser import ConfigParser, NoOptionError, NoSectionError
+except ImportError:
+    from ConfigParser import ConfigParser, NoOptionError, NoSectionError
 from zc.buildout import UserError
 from .base import BaseRepo
 from .base import SUBPROCESS_ENV
@@ -117,6 +118,8 @@ class HgRepo(BaseRepo):
             return False
 
         node, tags, rev = out.split(os.linesep)
+        if isinstance(node, bytes):
+            node = node.decode()
 
         if node.startswith(revstr):
             # if too short, can be superseded by an incoming tag

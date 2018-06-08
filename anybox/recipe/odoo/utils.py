@@ -3,7 +3,10 @@ import sys
 import re
 import subprocess
 from contextlib import contextmanager
-from ConfigParser import DuplicateSectionError
+try:
+    from configparser import DuplicateSectionError
+except ImportError:
+    from ConfigParser import DuplicateSectionError
 import logging
 logger = logging.getLogger(__name__)
 
@@ -111,13 +114,13 @@ def clean_object_files(directory):
         for p in to_delete:
             try:
                 os.unlink(p)
-            except:
+            except Exception:
                 logger.exception("Error attempting to unlink %r. "
                                  "Proceeding anyway.", p)
     for d in dirs_to_remove:
         try:
             os.rmdir(d)
-        except:
+        except Exception:
             logger.exception("Error attempting to rmdir %r",
                              "Proceeding anyway.", p)
 
@@ -143,13 +146,16 @@ def check_output(*popenargs, **kwargs):
     True
     """
 
-    if sys.version >= (2, 7):
-        return subprocess.check_output(*popenargs, **kwargs)
+    if sys.version_info >= (2, 7):
+        output = subprocess.check_output(*popenargs, **kwargs)
+        return output.decode() if isinstance(output, bytes) else output
     if 'stdout' in kwargs:
         raise ValueError('stdout argument not allowed, it will be overridden.')
 
     process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
     output, unused_err = process.communicate()
+    if isinstance(output, bytes):
+        output = output.decode()
     retcode = process.poll()
     if retcode:
         cmd = kwargs.get("args")

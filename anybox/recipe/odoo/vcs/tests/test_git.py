@@ -132,7 +132,7 @@ class GitTestCase(GitBaseTestCase):
         repo = GitRepo(target_dir, self.src_repo)
         try:
             repo.clean()
-        except:
+        except Exception:
             self.fail("clean() should not fail if "
                       "clone not already done")
 
@@ -591,7 +591,7 @@ class GitMergeTestCase(GitBaseTestCase):
         target_dir = os.path.join(self.dst_dir, "to_repo")
         repo = GitRepo(target_dir, self.src_repo)
         repo('master')
-        print 'merging with sha'
+        print('merging with sha')
         git_set_user_info(repo.target_dir)
         repo.merge(self.branch1_commit_sha1)
         self.assertTrue(os.path.exists(os.path.join(target_dir,

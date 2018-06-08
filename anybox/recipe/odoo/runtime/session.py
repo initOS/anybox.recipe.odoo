@@ -7,10 +7,10 @@ from distutils.version import Version
 from optparse import OptionParser  # we support python >= 2.6
 
 try:
-    import openerp as odoo
+    import odoo
 except ImportError:
     try:
-        import odoo
+        import openerp as odoo
     except ImportError:
         warnings.warn("This must be imported with a buildout odoo recipe "
                       "driven sys.path", RuntimeWarning)
@@ -58,14 +58,33 @@ class OdooVersion(Version):
     def __repr__(self):
         return 'OdooVersion(%r)' % str(self)
 
-    def __cmp__(self, other):
+    # Replacement helper for the __cmp__ operator in python3
+    def __make_comparable(self, other):
         if isinstance(other, tuple):
-            other = '.'.join(str(s) for s in other)
+            return self.__class__('.'.join(str(s) for s in other))
         elif not isinstance(other, self.__class__):
-            other = str(other)  # Works with distutils' Version classes
+            # Works with distutils' Version classes
+            return self.__class__(str(other))
+        else:
+            return self.__class__(other)
 
-        other = self.__class__(other)
-        return cmp(self.components, other.components)
+    def __le__(self, other):
+        return self.components < self.__make_comparable(other).components
+
+    def __lt__(self, other):
+        return self.components <= self.__make_comparable(other).components
+
+    def __eq__(self, other):
+        return self.components == self.__make_comparable(other).components
+
+    def __ne__(self, other):
+        return self.components != self.__make_comparable(other).components
+
+    def __ge__(self, other):
+        return self.components >= self.__make_comparable(other).components
+
+    def __gt__(self, other):
+        return self.components > self.__make_comparable(other).components
 
 
 class Session(object):
@@ -216,7 +235,7 @@ class Session(object):
             return
 
         self._environments_gen_context = gen_factory().gen
-        self._environments_gen_context.next()
+        next(self._environments_gen_context)
         self.env = odoo.api.Environment(
             self.cr, self.uid, getattr(
                 self, 'context', {}
@@ -238,7 +257,7 @@ class Session(object):
             return
 
         try:
-            gen_context.next()
+            next(gen_context)
         except StopIteration:
             pass
         else:
@@ -247,7 +266,7 @@ class Session(object):
                         "tampering with it that should be more cautious. "
                         "Proceeding with cleansing.")
             try:
-                gen_context.next()
+                next(gen_context)
             except StopIteration:
                 pass
             else:

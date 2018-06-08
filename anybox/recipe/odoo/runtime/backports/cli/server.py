@@ -34,15 +34,27 @@ import os
 import sys
 
 try:
-    import openerp
+    import odoo
+except ImportError:
+    try:
+        import openerp as odoo
+    except ImportError:
+        pass
+    else:
+        __author__ = odoo.release.author
+        __version__ = odoo.release.version
+
+        if odoo.release.version_info < (6, 1):
+            raise RuntimeError("Interpreter and scripts not compatible "
+                               "with OpenERP < 6.1")
 except:
     # this file must stay importable by nose tests
     pass
 else:
-    __author__ = openerp.release.author
-    __version__ = openerp.release.version
+    __author__ = odoo.release.author
+    __version__ = odoo.release.version
 
-    if openerp.release.version_info < (6, 1):
+    if odoo.release.version_info < (6, 1):
         raise RuntimeError("Interpreter and scripts not compatible "
                            "with OpenERP < 6.1")
 
@@ -65,7 +77,7 @@ def check_postgres_user():
 
     This function assumes the configuration has been initialized.
     """
-    config = openerp.tools.config
+    config = odoo.tools.config
     if config['db_user'] == 'postgres':
         sys.stderr.write("Using the database user 'postgres' is a "
                          "security risk, aborting.")
@@ -77,7 +89,7 @@ def report_configuration():
 
     This function assumes the configuration has been initialized.
     """
-    config = openerp.tools.config
+    config = odoo.tools.config
     _logger.info("OpenERP version %s", __version__)
     for name, value in [('addons paths', config['addons_path']),
                         ('database hostname',

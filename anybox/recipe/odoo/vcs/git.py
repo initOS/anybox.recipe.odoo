@@ -132,7 +132,7 @@ class GitRepo(BaseRepo):
         try:
             version = cls._git_version = tuple(
                 int(x) for x in v_str.split()[2].split('.')[:3])
-        except:
+        except Exception:
             raise ValueError("Could not parse git version output %r. Please "
                              "report this" % v_str)
         return version
@@ -144,7 +144,8 @@ class GitRepo(BaseRepo):
             :param meth: the calling method to use.
             """
             logger.log(log_level, "%s> call %r", self.target_dir, cmd)
-            return callwith(cmd, **kw)
+            output = callwith(cmd, **kw)
+            return output.decode() if isinstance(output, bytes) else output
 
     def clean(self):
         if not os.path.isdir(self.target_dir):
@@ -167,7 +168,10 @@ class GitRepo(BaseRepo):
                        revspec]
             p = subprocess.Popen(cmd,
                                  stdout=subprocess.PIPE, env=SUBPROCESS_ENV)
-            return p.communicate()[0].split()
+            out = p.communicate()[0]
+            if isinstance(out, bytes):
+                out = out.decode()
+            return out.split()
 
     def uncommitted_changes(self):
         """True if we have uncommitted changes."""
@@ -183,6 +187,8 @@ class GitRepo(BaseRepo):
             os.chdir(self.target_dir)
             for line in self.log_call(['git', 'remote', '-v'],
                                       callwith=check_output).splitlines():
+                if isinstance(line, bytes):
+                    line = line.decode()
                 if (line.endswith('(fetch)') and
                         line.startswith(BUILDOUT_ORIGIN)):
                     return line[len(BUILDOUT_ORIGIN):-7].strip()
@@ -211,10 +217,12 @@ class GitRepo(BaseRepo):
 
     def is_local_fixed_revision(self, refspec):
         """In Git, tags only are reproductible refspec."""
-        tags = (t.strip()
-                for t in self.log_call(['git', 'tag'],
-                                       callwith=check_output,
-                                       cwd=self.target_dir).splitlines())
+        lines = self.log_call(
+            ['git', 'tag'], callwith=check_output, cwd=self.target_dir
+        )
+        if isinstance(lines, bytes):
+            lines = lines.decode()
+        tags = [t.strip() for t in lines.splitlines()]
         return refspec in tags
 
     def has_commit(self, sha):
@@ -288,10 +296,11 @@ class GitRepo(BaseRepo):
         if self.get_local_hash_for_ref(ref) == ref:
             # shortcut for commit hashes: if ref is a commit hash and git
             # already knows it as a commit, we can skip the remote querying
-            return (None, ref)
+            return None, ref
         out = self.log_call(['git', 'ls-remote', remote, ref],
                             cwd=self.target_dir,
                             callwith=check_output).strip()
+
         for sha, fullref in (l.split() for l in out.splitlines()):
             if fullref == 'refs/heads/' + ref:
                 return 'branch', sha
@@ -460,5 +469,7 @@ class GitRepo(BaseRepo):
     def _is_a_branch(self, revision):
         # if this fails, we have a seriously corrupted repo
         branches = update_check_output(["git", "branch"])
+        if isinstance(branches, bytes):
+            branches = branches.decode()
         branches = branches.split()
         return revision in branches

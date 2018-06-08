@@ -34,7 +34,7 @@ class IntegrationTestCase(unittest.TestCase):
                             self.buildout_dir)
             os.chdir(self.buildout_dir)
             self.provide_dependencies()
-        except:
+        except Exception:
             self.tearDown()
             raise
 
@@ -75,7 +75,7 @@ class IntegrationTestCase(unittest.TestCase):
     def tearDown(self):
         try:
             shutil.rmtree(self.sandbox_dir)
-        except:
+        except Exception:
             pass
 
         sys.modules['pip'] = self.pip_original

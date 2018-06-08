@@ -35,8 +35,10 @@ import logging
 import os
 import signal
 import sys
-
-import openerp
+try:
+    import odoo
+except ImportError:
+    import openerp as odoo
 
 # Also use the `openerp` logger for the main script.
 _logger = logging.getLogger('openerp')
@@ -54,9 +56,9 @@ def signal_handler(sig, frame):
     """
     global quit_signals_received
     quit_signals_received += 1
-    import openerp.addons.base
-    openerp.addons.base.ir.ir_cron.quit_signal_received = True
-    if quit_signals_received == 1 and openerp.addons.base.ir.ir_cron.job_in_progress:
+    import odoo.addons.base
+    odoo.addons.base.ir.ir_cron.quit_signal_received = True
+    if quit_signals_received == 1 and odoo.addons.base.ir.ir_cron.job_in_progress:
         _logger.info("Waiting for the current job to complete.")
         print "Waiting for the current job to complete."
         print "Hit Ctrl-C again to force shutdown."
@@ -81,6 +83,8 @@ def list_databases():
     p2 = subprocess.Popen(["cut", "-f", "1", "-d", "|"], stdin=p1.stdout, stdout=subprocess.PIPE)
     p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
     output = p2.communicate()[0]
+    if isinstance(output, bytes):
+        output = output.decode()
     databases = output.splitlines()
     # TODO filter out non-Odoo databases
     databases = [d for d in databases if d not in ['template0', 'template1', 'postgres']]
@@ -89,26 +93,26 @@ def list_databases():
 
 if __name__ == '__main__':
     os.environ['TZ'] = 'UTC'
-    openerp.tools.config.parse_config(sys.argv[1:])
-    config = openerp.tools.config
+    odoo.tools.config.parse_config(sys.argv[1:])
+    config = odoo.tools.config
     if config['log_handler'] == [':INFO']:
         # Replace the default value, which is suitable for openerp-server.
         config['log_handler'].append('openerp.addons.base.ir.ir_cron:DEBUG')
     setup_signal_handlers()
-    openerp.modules.module.initialize_sys_path()
-    openerp.modules.loading.open_openerp_namespace()
-    openerp.netsvc.init_logger()
-    openerp.cron.enable_schedule_wakeup = False
-    openerp.multi_process = True # enable multi-process signaling
-    import openerp.addons.base
-    print "Odoo cron jobs worker. Hit Ctrl-C to exit."
-    print "Documentation is available at the top of the `opener-cron-worker` file."
+    odoo.modules.module.initialize_sys_path()
+    odoo.modules.loading.open_openerp_namespace()
+    odoo.netsvc.init_logger()
+    odoo.cron.enable_schedule_wakeup = False
+    odoo.multi_process = True # enable multi-process signaling
+    import odoo.addons.base
+    print("Odoo cron jobs worker. Hit Ctrl-C to exit.")
+    print("Documentation is available at the top of the `opener-cron-worker` file.")
     if config['db_name']:
         db_names = config['db_name'].split(',')
-        print "Monitoring %s databases." % len(db_names)
+        print("Monitoring %s databases." % len(db_names))
     else:
         db_names = list_databases
-        print "Monitored databases are auto-discovered."
-    openerp.addons.base.ir.ir_cron.ir_cron._run(db_names)
+        print("Monitored databases are auto-discovered.")
+    odoo.addons.base.ir.ir_cron.ir_cron._run(db_names)
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

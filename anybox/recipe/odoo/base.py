@@ -10,9 +10,12 @@ import logging
 import stat
 import imp
 import shutil
-import ConfigParser
 import distutils.core
 import pkg_resources
+try:
+    from configparser import ConfigParser, RawConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser, RawConfigParser
 try:
     from collections import OrderedDict
 except ImportError:  # Python < 2.7
@@ -25,9 +28,18 @@ from zc.buildout.easy_install import Installer
 from zc.buildout.easy_install import IncompatibleConstraintError
 
 import zc.recipe.egg
-import httplib
-import rfc822
-from urlparse import urlparse
+try:
+    from http.client import HTTPConnection, HTTPSConnection
+except ImportError:
+    from httplib import HTTPConnection, HTTPSConnection
+try:
+    from email.utils import mktime_tz, parsedate_tz
+except ImportError:
+    from rfc822 import mktime_tz, parsedate_tz
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 from . import vcs
 from . import utils
 from .utils import option_splitlines, option_strip, conf_ensure_section
@@ -37,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 def rfc822_time(h):
     """Parse RFC 2822-formatted http header and return a time int."""
-    rfc822.mktime_tz(rfc822.parsedate_tz(h))
+    return mktime_tz(parsedate_tz(h))
 
 
 class MainSoftware(object):
@@ -398,7 +410,7 @@ class BaseRecipe(object):
         # first import is done from a tmp dir
         # that does not exist any more).
         # So, better to clean that before hand.
-        for k in sys.modules.keys():
+        for k in list(sys.modules.keys()):
             if k.split('.', 1)[0] == 'pip':
                 del sys.modules[k]
 
@@ -415,7 +427,10 @@ class BaseRecipe(object):
         self.merge_requirements(reqs=new_reqs)
 
     def read_requirements_pip_before_v8(self, req_path, versions, develops):
-        from pip.req import parse_requirements
+        try:
+            from pip.req import parse_requirements
+        except ImportError:  # pip >= 10.0.1
+            from pip._internal.req import parse_requirements
         if pip_version() < (1, 5):
             parsed = parse_requirements(req_path)
         else:
@@ -480,7 +495,10 @@ class BaseRecipe(object):
             versions[project_name] = spec[1]
 
     def read_requirements_pip_after_v8(self, req_path, versions, develops):
-        from pip.req import parse_requirements
+        try:
+            from pip.req import parse_requirements
+        except ImportError:  # pip >= 10.0.1
+            from pip._internal.req import parse_requirements
         # pip internals are protected against the fact of not passing
         # a session with ``is None``. OTOH, the session is not used
         # if the file is local (direct path, not an URL), so we cheat
@@ -522,7 +540,7 @@ class BaseRecipe(object):
 
             if len(specs) > 1:
                 supported = False
-            spec = specs.__iter__().next()
+            spec = next(specs.__iter__())
             if spec.operator != '==':
                 supported = False
 
@@ -566,7 +584,7 @@ class BaseRecipe(object):
                 raise
             except IncompatibleConstraintError as exc:
                 missing = exc.args[2].project_name
-            except UserError, exc:  # happens only for zc.buildout >= 2.0
+            except UserError as exc:  # happens only for zc.buildout >= 2.0
                 missing = exc.message.split(os.linesep)[0].split()[-1]
                 missing = re.split(r'[=<>]', missing)[0]
             else:
@@ -654,7 +672,7 @@ class BaseRecipe(object):
                         raise EnvironmentError(
                             'Problem while reading Odoo release.py: ' +
                             exc.message)
-            except ImportError, exception:
+            except ImportError as exception:
                 if 'babel' in exception.message:
                     raise EnvironmentError(
                         'OpenERP setup.py has an unwanted import Babel.\n'
@@ -664,7 +682,7 @@ class BaseRecipe(object):
                         'or pip install babel)')
                 else:
                     raise exception
-            except Exception, exception:
+            except Exception as exception:
                 raise EnvironmentError('Problem while reading Odoo '
                                        'setup.py: ' + exception.message)
             finally:
@@ -763,7 +781,7 @@ class BaseRecipe(object):
                 else:  # vcs
                     repo_url, addons_dir, repo_rev = split[1:4]
                     location_spec = (repo_url, repo_rev)
-            except:
+            except Exception:
                 raise UserError("Could not parse addons line: %r. "
                                 "Please check format " % line)
 
@@ -909,7 +927,7 @@ class BaseRecipe(object):
     def revert_sources(self):
         """Revert all sources to the revisions specified in :attr:`sources`.
         """
-        for target, desc in self.sources.iteritems():
+        for target, desc in self.sources.items():
             if desc[0] in ('local', 'downloadable'):
                 continue
 
@@ -987,9 +1005,9 @@ class BaseRecipe(object):
                     self.archive_path, url)
         parsed = urlparse(url)
         if parsed.scheme == 'https':
-            cnx_cls = httplib.HTTPSConnection
+            cnx_cls = HTTPSConnection
         else:
-            cnx_cls = httplib.HTTPConnection
+            cnx_cls = HTTPConnection
         try:
             cnx = cnx_cls(parsed.netloc)
             cnx.request('HEAD', parsed.path)  # TODO query ? fragment ?
@@ -1033,7 +1051,7 @@ class BaseRecipe(object):
 
             logger.info(u'Inspecting %s ...' % self.archive_path)
             tar = tarfile.open(self.archive_path)
-            first = tar.next()
+            first = next(tar)
             # Everything that follows assumes all tarball members
             # are inside a directory with an expected name such
             # as odoo-6.1-1
@@ -1052,7 +1070,7 @@ class BaseRecipe(object):
             tar.close()
         else:
             url, rev = source[1]
-            options = dict((k, v) for k, v in self.options.iteritems()
+            options = dict((k, v) for k, v in self.options.items()
                            if k.startswith(type_spec + '-'))
             if type_spec == 'git':
                 options['depth'] = options.pop('git-depth', None)
@@ -1123,7 +1141,7 @@ class BaseRecipe(object):
         self._create_default_config()
 
         # modify the config file according to recipe options
-        config = ConfigParser.RawConfigParser()
+        config = RawConfigParser()
         config.read(self.config_path)
         for recipe_option in self.options:
             if '.' not in recipe_option:
@@ -1131,7 +1149,7 @@ class BaseRecipe(object):
             section, option = recipe_option.split('.', 1)
             conf_ensure_section(config, section)
             config.set(section, option, self.options[recipe_option])
-        with open(self.config_path, 'wb') as configfile:
+        with open(self.config_path, 'w') as configfile:
             config.write(configfile)
 
         if extract_downloads_to:
@@ -1151,7 +1169,7 @@ class BaseRecipe(object):
 
         logger.info("Freezing part %r to config file %r", self.name,
                     out_config_path)
-        out_conf = ConfigParser.ConfigParser()
+        out_conf = ConfigParser()
 
         frozen = getattr(self.buildout, '_odoo_recipe_frozen', None)
         if frozen is None:
@@ -1200,7 +1218,7 @@ class BaseRecipe(object):
             # the 'revisions' option. In the meanwhile, let's just play safe
 
             if local_path is main_software:
-                addons_option.insert(0, '%s  ; main software part' % revision)
+                addons_option.insert(0, '%s' % revision)
                 # actually, that comment will be lost if this is not the
                 # last part (dropped upon reread)
             else:
@@ -1237,20 +1255,23 @@ class BaseRecipe(object):
             return ()
 
         try:
-            import pip.req
+            import pip.req as pip_req
         except ImportError:
-            logger.error("You have vcs-extends-develop distributions "
-                         "but pip is not available. That means that "
-                         "gp.vcsdevelop is not properly installed. Did "
-                         "you ever run that buildout ?")
-            raise
+            try:
+                import pip._internal.req as pip_req  # pip >= 10.0.1
+            except ImportError:
+                logger.error("You have vcs-extends-develop distributions "
+                             "but pip is not available. That means that "
+                             "gp.vcsdevelop is not properly installed. Did "
+                             "you ever run that buildout ?")
+                raise
 
-        if 'parse_editable' in dir(pip.req):  # pip < 6.0
+        if 'parse_editable' in dir(pip_req):  # pip < 6.0
             def parse_egg_dir(req_str):
-                return pip.req.parse_editable(req_str)[0]
+                return pip_req.parse_editable(req_str)[0]
         else:
             def parse_egg_dir(req_str):
-                ireq = pip.req.InstallRequirement.from_editable(req_str)
+                ireq = pip_req.InstallRequirement.from_editable(req_str)
                 # GR I'm worried because now this is also used as project
                 # name in requirement, whereas it used to just be the target
                 # directory
@@ -1377,7 +1398,7 @@ class BaseRecipe(object):
         logger.info("Extracting part %r to directory %r and config file %r "
                     "therein.", self.name, target_dir, outconf_name)
         target_dir = self.make_absolute(target_dir)
-        out_conf = ConfigParser.ConfigParser()
+        out_conf = ConfigParser()
 
         all_extracted = getattr(self.buildout, '_odoo_recipe_extracted',
                                 None)

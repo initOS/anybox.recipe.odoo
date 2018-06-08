@@ -58,11 +58,12 @@ def main(starter, conf, version=None, just_test=False,
     if '--install-all' in sys.argv:
         sys.argv.remove('--install-all')
         try:
-            from openerp.tools import config
-            from openerp.modules import get_modules
-        except ImportError:
             from odoo.tools import config
             from odoo.modules import get_modules
+        except ImportError:
+            from openerp.tools import config
+            from openerp.modules import get_modules
+
         # Maybe we should preparse config in all cases and therefore avoid
         # adding the '-c' on the fly ?
         # Still, cautious about pre-6.1 versions
@@ -81,6 +82,6 @@ def main(starter, conf, version=None, just_test=False,
     glob['__file__'] = starter
     sys.argv[0] = starter
     try:
-        execfile(starter, globals())
+        exec(open(starter).read(), globals())
     except SystemExit as exc:
         return exc.code

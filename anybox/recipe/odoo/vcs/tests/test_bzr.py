@@ -212,7 +212,7 @@ class BzrTestCase(BzrBaseTestCase):
         branch = BzrBranch(target_dir, self.src_repo)
         try:
             branch.clean()
-        except:
+        except Exception:
             self.fail("clean() should not fail if "
                       "branch not already done")
 
@@ -227,6 +227,8 @@ class BzrTestCase(BzrBaseTestCase):
             bzr_status = subprocess.Popen(['bzr', 'status'],
                                           stdout=subprocess.PIPE)
             out = bzr_status.communicate()[0]
+            if isinstance(out, bytes):
+                out = out.decode()
 
         self.assertEquals(bzr_status.returncode, 0)
         # output of 'bzr status' should be empty : neither unknown file nor

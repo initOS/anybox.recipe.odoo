@@ -1,9 +1,15 @@
 import os
 import logging
 import subprocess
-import urlparse
-import urllib
-from StringIO import StringIO
+try:
+    from urllib.parse import urlparse, urlunparse, quote
+except ImportError:
+    from urlparse import urlparse, urlunparse
+    from urllib import quote
+try:
+    from io import StringIO
+except ImportError:
+    from StringIO import StringIO
 from copy import deepcopy
 
 from zc.buildout import UserError
@@ -53,9 +59,9 @@ class BzrBranch(BaseRepo):
 
             # first arg (name) of look_up is acturally ignored
             url = LPDIR.look_up('', self.url)
-            parsed = list(urlparse.urlparse(url))
-            parsed[2] = urllib.quote(parsed[2])
-            self.url = urlparse.urlunparse(parsed)
+            parsed = list(urlparse(url))
+            parsed[2] = quote(parsed[2])
+            self.url = urlunparse(parsed)
 
     def conf_file_path(self):
         return os.path.join(self.target_dir, '.bzr', 'branch', 'branch.conf')
@@ -73,10 +79,13 @@ class BzrBranch(BaseRepo):
         {'parent_location': '/some/path', 'submit_location': '/other/path'}
         """
         with use_or_open(from_file, self.conf_file_path()) as conffile:
-            return dict((name.strip(), url.strip())
-                        for name, url in (
-                            line.split('=', 1) for line in conffile
-                            if not line.startswith('#') and '=' in line))
+            lines = []
+            for line in conffile:
+                if isinstance(line, bytes):
+                    line = line.decode()
+                if not line.startswith('#') and '=' in line:
+                    lines.append(line.split('=', 1))
+            return dict((name.strip(), url.strip()) for name, url in lines)
         with working_directory_keeper:
             os.chdir(self.target_dir)
 
@@ -322,7 +331,7 @@ class BzrBranch(BaseRepo):
             init_opt = self.options.get('bzr-init')
 
             if fixed_rev and not unsafe_revno:
-                if (offline and init_opt == 'lightweight-checkout'):
+                if offline and init_opt == 'lightweight-checkout':
                     logger.warning("Offline mode, no update for lightweight "
                                    "checkout at %s on revision %r",
                                    self.target_dir, revision)

@@ -6,10 +6,16 @@ import shutil
 import subprocess
 import logging
 from tempfile import mkdtemp
-from UserDict import UserDict
+try:
+    from collections import UserDict
+except ImportError:
+    from UserDict import UserDict
 
 from zc.buildout.easy_install import Installer
-from pip.vcs import vcs as pip_vcs
+try:
+    from pip.vcs import vcs as pip_vcs
+except ImportError:
+    from pip._internal.vcs import vcs as pip_vcs
 
 from . import vcs
 from .base import BaseRecipe
@@ -240,7 +246,7 @@ class RecipeTestCase(unittest.TestCase):
             # grabbing it with getLogger, even after the import is not
             # effective: the level gets overwritten afterwards
             from zc.buildout.easy_install import logger as zc_logger
-        except:
+        except Exception:
             logger.warn("Could not grab zc.buildout.easy_install logger")
         else:
             zc_logger.setLevel(logging.ERROR)

@@ -2,7 +2,10 @@
 
 import os
 import subprocess
-from ConfigParser import ConfigParser, RawConfigParser
+try:
+    from configparser import ConfigParser, RawConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser, RawConfigParser
 from zc.buildout import UserError
 
 from ..testing import COMMIT_USER_FULL
@@ -22,7 +25,7 @@ class HgBaseTestCase(VcsTestCase):
                              stderr=subprocess.PIPE)
         nodes = p.communicate()[0].split()
         self.assertEquals(len(nodes), 1, msg="Expected only one parent")
-        return nodes[0]
+        return nodes[0].decode() if isinstance(nodes[0], bytes) else nodes[0]
 
     def create_src(self):
         os.chdir(self.src_dir)
@@ -74,7 +77,10 @@ class HgBaseTestCase(VcsTestCase):
         p = subprocess.Popen(['hg', '--cwd', branch.target_dir,
                               'parents', '--template={rev}\n'],
                              stdout=subprocess.PIPE)
-        self.assertEquals(p.communicate()[0].split(), [str(revno)])
+        output = p.communicate()[0]
+        if isinstance(output, bytes):
+            output = output.decode()
+        self.assertEquals(output.split(), [str(revno)])
 
 
 class HgTestCase(HgBaseTestCase):
@@ -94,7 +100,7 @@ class HgTestCase(HgBaseTestCase):
 
         try:
             repo.clean()
-        except:
+        except Exception:
             self.fail("clean() should not fail if "
                       "clone not already done")
 
