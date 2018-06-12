@@ -2,10 +2,7 @@ import os
 import tempfile
 import shutil
 import subprocess
-try:
-    from configparser import ConfigParser, NoOptionError
-except ImportError:
-    from ConfigParser import ConfigParser, NoOptionError
+from configparser import ConfigParser, NoOptionError
 from ..base import GP_VCS_EXTEND_DEVELOP
 from ..testing import RecipeTestCase
 from ..testing import COMMIT_USER_FULL
