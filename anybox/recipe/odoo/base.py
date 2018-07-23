@@ -12,7 +12,10 @@ import imp
 import shutil
 import distutils.core
 import pkg_resources
-from configparser import ConfigParser, RawConfigParser
+try:
+    from configparser import ConfigParser, RawConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser, RawConfigParser
 try:
     from collections import OrderedDict
 except ImportError:  # Python < 2.7

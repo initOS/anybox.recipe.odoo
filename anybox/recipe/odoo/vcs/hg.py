@@ -2,7 +2,10 @@ import os
 import logging
 import subprocess
 import warnings
-from configparser import ConfigParser, NoOptionError, NoSectionError
+try:
+    from configparser import ConfigParser, NoOptionError, NoSectionError
+except ImportError:
+    from ConfigParser import ConfigParser, NoOptionError, NoSectionError
 from zc.buildout import UserError
 from .base import BaseRepo
 from .base import SUBPROCESS_ENV

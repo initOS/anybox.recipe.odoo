@@ -3,7 +3,10 @@ import sys
 import re
 import subprocess
 from contextlib import contextmanager
-from configparser import DuplicateSectionError
+try:
+    from configparser import DuplicateSectionError
+except ImportError:
+    from ConfigParser import DuplicateSectionError
 import logging
 logger = logging.getLogger(__name__)
 

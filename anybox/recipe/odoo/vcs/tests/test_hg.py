@@ -2,7 +2,10 @@
 
 import os
 import subprocess
-from configparser import ConfigParser, RawConfigParser
+try:
+    from configparser import ConfigParser, RawConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser, RawConfigParser
 from zc.buildout import UserError
 
 from ..testing import COMMIT_USER_FULL

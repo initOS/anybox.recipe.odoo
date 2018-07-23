@@ -1,7 +1,10 @@
 import os
 import shutil
 import tempfile
-from configparser import ConfigParser, NoOptionError
+try:
+    from configparser import ConfigParser, NoOptionError
+except ImportError:
+    from ConfigParser import ConfigParser, NoOptionError
 from ..base import GP_VCS_EXTEND_DEVELOP
 from ..base import GP_DEVELOP_DIR
 from ..testing import RecipeTestCase
