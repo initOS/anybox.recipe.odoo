@@ -185,6 +185,9 @@ class Session(object):
         cnx = odoo.sql_db.db_connect(db)
         cr = cnx.cursor()
         self.is_initialization = not(odoo.modules.db.is_initialized(cr))
+        if self.is_initialization:
+            odoo.modules.db.initialize(cr)
+            cr.commit()
         cr.close()
 
         startup.check_root_user()
