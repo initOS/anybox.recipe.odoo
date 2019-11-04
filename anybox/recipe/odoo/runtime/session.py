@@ -69,10 +69,10 @@ class OdooVersion(Version):
             return self.__class__(other)
 
     def __le__(self, other):
-        return self.components < self.__make_comparable(other).components
+        return self.components <= self.__make_comparable(other).components
 
     def __lt__(self, other):
-        return self.components <= self.__make_comparable(other).components
+        return self.components < self.__make_comparable(other).components
 
     def __eq__(self, other):
         return self.components == self.__make_comparable(other).components
