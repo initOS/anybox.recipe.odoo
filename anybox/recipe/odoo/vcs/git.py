@@ -1,17 +1,19 @@
+import logging
 import os
 import subprocess
-import logging
 import tempfile
 
 from zc.buildout import UserError
+
 from .. import utils
-from ..utils import working_directory_keeper
-from ..utils import check_output
-from .base import BaseRepo
-from .base import SUBPROCESS_ENV
-from .base import update_check_call
-from .base import update_check_output
-from .base import UpdateError
+from ..utils import check_output, working_directory_keeper
+from .base import (
+    SUBPROCESS_ENV,
+    BaseRepo,
+    UpdateError,
+    update_check_call,
+    update_check_output,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -139,13 +141,13 @@ class GitRepo(BaseRepo):
 
     def log_call(self, cmd, callwith=subprocess.check_call,
                  log_level=logging.INFO, **kw):
-            """Wrap a subprocess call with logging
+        """Wrap a subprocess call with logging
 
-            :param meth: the calling method to use.
-            """
-            logger.log(log_level, "%s> call %r", self.target_dir, cmd)
-            output = callwith(cmd, **kw)
-            return output.decode() if isinstance(output, bytes) else output
+        :param meth: the calling method to use.
+        """
+        logger.log(log_level, "%s> call %r", self.target_dir, cmd)
+        output = callwith(cmd, **kw)
+        return output.decode() if isinstance(output, bytes) else output
 
     def clean(self):
         if not os.path.isdir(self.target_dir):
@@ -253,7 +255,9 @@ class GitRepo(BaseRepo):
                         "git-warn-sha-pins = False\n"
                         "to your buildout configuration",
                         self.target_dir)
+
         branch = self.options.get('branch')
+        fallback_fetch = None
         if not self.has_commit(sha):
             fetch_cmd = ['git', 'fetch', BUILDOUT_ORIGIN]
             if branch is None:
@@ -265,10 +269,23 @@ class GitRepo(BaseRepo):
                             "and possibly reliability.", self.target_dir, sha)
             else:
                 fetch_cmd.append(branch)
+
+            depth = self.options.get('depth')
+            if depth is not None:
+                fallback_fetch = fetch_cmd[:]
+                fetch_cmd.extend(('--depth', str(depth)))
             self.log_call(fetch_cmd, callwith=update_check_call)
 
         if checkout:
-            self.log_call(['git', 'checkout', sha])
+            try:
+                self.log_call(['git', 'checkout', sha])
+            except subprocess.CalledProcessError:
+                if fallback_fetch:
+                    # Commit probably not found
+                    # Deepen the repository by 100k as a guess
+                    fallback_fetch.append("--deepen=100000")
+                    self.log_call(fallback_fetch, callwith=update_check_call)
+                    self.log_call(['git', 'checkout', sha])
 
     def get_local_hash_for_ref(self, ref):
         """Query the local git database for sha of a given ref.

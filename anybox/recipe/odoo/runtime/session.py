@@ -1,8 +1,8 @@
 """Utilities to start a server process."""
-import warnings
-import sys
-import os
 import logging
+import os
+import sys
+import warnings
 from distutils.version import Version
 from optparse import OptionParser  # we support python >= 2.6
 
@@ -184,7 +184,7 @@ class Session(object):
 
         cnx = odoo.sql_db.db_connect(db)
         cr = cnx.cursor()
-        self.is_initialization = not(odoo.modules.db.is_initialized(cr))
+        self.is_initialization = not odoo.modules.db.is_initialized(cr)
         if self.is_initialization:
             odoo.modules.db.initialize(cr)
             cr.commit()
@@ -205,9 +205,11 @@ class Session(object):
         if version_info[0] <= 10:
             self._registry = Registry.get(
                 db, update_module=False)
-        else:
-            # Form Odoo 11.0: no get method available
+        # Form Odoo 11.0: no get method available
+        elif db in Registry.registries:
             self._registry = Registry(db)
+        else:
+            self._registry = Registry.new(db, update_module=True)
         config['without_demo'] = saved_without_demo
         self.init_cursor()
         self.uid = SUPERUSER_ID

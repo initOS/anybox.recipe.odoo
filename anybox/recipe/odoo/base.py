@@ -1,17 +1,31 @@
 # coding: utf-8
-from os.path import join, basename
-import os
-import sys
-import re
-import urllib
-import tarfile
-import setuptools
-import logging
-import stat
-import imp
-import shutil
 import distutils.core
+import imp
+import logging
+import os
+import re
+import shutil
+import stat
+import sys
+import tarfile
+import urllib
+from os.path import basename, join
+
+import setuptools
+
 import pkg_resources
+import zc.recipe.egg
+from zc.buildout import UserError
+from zc.buildout.easy_install import (
+    IncompatibleConstraintError,
+    Installer,
+    MissingDistribution,
+    VersionConflict,
+)
+
+from . import utils, vcs
+from .utils import conf_ensure_section, option_splitlines, option_strip
+
 try:
     from configparser import ConfigParser, RawConfigParser
 except ImportError:
@@ -20,14 +34,8 @@ try:
     from collections import OrderedDict
 except ImportError:  # Python < 2.7
     from ordereddict import OrderedDict  # noqa
-from zc.buildout.easy_install import MissingDistribution
-from zc.buildout import UserError
-from zc.buildout.easy_install import VersionConflict
-from zc.buildout.easy_install import Installer
 
-from zc.buildout.easy_install import IncompatibleConstraintError
 
-import zc.recipe.egg
 try:
     from http.client import HTTPConnection, HTTPSConnection
 except ImportError:
@@ -40,9 +48,6 @@ try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
-from . import vcs
-from . import utils
-from .utils import option_splitlines, option_strip, conf_ensure_section
 
 logger = logging.getLogger(__name__)
 
@@ -872,6 +877,7 @@ class BaseRecipe(object):
                            clean=self.clean)
             if loc_type == 'git':
                 options['depth'] = self.options.get('git-depth')
+                options['branch'] = self.options.get('git-branch')
             options.update(addons_options)
 
             group = addons_options.get('group')
@@ -1074,6 +1080,7 @@ class BaseRecipe(object):
                            if k.startswith(type_spec + '-'))
             if type_spec == 'git':
                 options['depth'] = options.pop('git-depth', None)
+                options['branch'] = options.pop('git-branch', None)
 
             options.update(source[2])
             if self.clean:
