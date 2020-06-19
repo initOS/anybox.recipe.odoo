@@ -8,9 +8,11 @@ from optparse import OptionParser  # we support python >= 2.6
 
 try:
     import odoo
+    from odoo import modules, release, tools
 except ImportError:
     try:
         import openerp as odoo
+        from openerp import modules, release, tools
     except ImportError:
         warnings.warn("This must be imported with a buildout odoo recipe "
                       "driven sys.path", RuntimeWarning)
@@ -18,16 +20,16 @@ try:
     startup = odoo.cli.server
 except AttributeError:
     from .backports.cli import server as startup
-config = odoo.tools.config
+config = tools.config
 SUPERUSER_ID = odoo.SUPERUSER_ID
-parse_version = odoo.tools.parse_version
-version_info = odoo.release.version_info
+parse_version = tools.parse_version
+version_info = release.version_info
 try:
     # Odoo 10.0: This is deprecated, use :class:`Registry` instead.
-    Registry = odoo.modules.registry.RegistryManager
+    Registry = modules.registry.RegistryManager
 except AttributeError:
     # Odoo 11.0: class has been removed
-    Registry = odoo.modules.registry.Registry
+    Registry = modules.registry.Registry
 
 logger = logging.getLogger(__name__)
 

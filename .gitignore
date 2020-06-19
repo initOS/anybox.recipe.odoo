@@ -6,6 +6,7 @@ build/
 COVERAGE
 .noseids
 *.pyc
+*.pyo
 *.orig
 *~
 *#
