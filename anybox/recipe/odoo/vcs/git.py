@@ -59,6 +59,9 @@ class GitRepo(BaseRepo):
             if depth <= 0:
                 raise invalid
             self.options['depth'] = depth
+        branch = self.options.pop('branch', None)
+        if branch and branch.strip():
+            self.options['branch'] = branch.strip()
 
     @property
     def git_version(self):
